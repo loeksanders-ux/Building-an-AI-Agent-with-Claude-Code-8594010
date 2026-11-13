@@ -158,3 +158,90 @@ export async function deleteProspectByDomain(client: AirtableMcp, domain: string
   await client.call('delete_records_for_table', { tableId: client.tables.Prospects.id, recordIds: [id] });
   return 1;
 }
+
+/**
+ * Read primitive (§12.3). Returns the `rec…` IDs of `Outreach` rows whose `prospect` link
+ * references `prospectId`; empty array on no-match.
+ */
+export async function listOutreachByProspectId(client: AirtableMcp, prospectId: string): Promise<string[]> {
+  const prospectF = fieldId(client, 'Outreach', 'prospect');
+  const { records } = await client.call<ListResult>('list_records_for_table', {
+    tableId: client.tables.Outreach.id,
+    fieldIds: [prospectF],
+  });
+  // Linked cells arrive as [{id, name}] on this MCP surface; accept bare `rec…` strings too (§12.3).
+  return records
+    .filter((r) => {
+      const cell = r.cellValuesByFieldId[prospectF];
+      return (
+        Array.isArray(cell) &&
+        cell.some((e) => e === prospectId || (typeof e === 'object' && e !== null && (e as { id?: unknown }).id === prospectId))
+      );
+    })
+    .map((r) => r.id);
+}
+
+/**
+ * Test cleanup helper (§12.3). Deletes the `Outreach` rows linked to the `Prospects` row for
+ * `domain`; returns the count deleted. Must run before `deleteProspectByDomain`.
+ */
+export async function deleteOutreachByProspect(client: AirtableMcp, domain: string): Promise<number> {
+  const prospectId = await getProspectIdByDomain(client, domain);
+  if (!prospectId) return 0;
+  const ids = await listOutreachByProspectId(client, prospectId);
+  // Airtable deletes at most 10 records per request.
+  for (let i = 0; i < ids.length; i += 10) {
+    await client.call('delete_records_for_table', { tableId: client.tables.Outreach.id, recordIds: ids.slice(i, i + 10) });
+  }
+  return ids.length;
+}
+
+/** A `Prospects` row as stored: record ID plus every field by name. `signals` is the stored Markdown. */
+export type ProspectRecord = { id: string } & Record<string, unknown>;
+
+/**
+ * Read primitive (§12.3). Returns `{ id, ...fields }` for the `Prospects` row for `domain`
+ * (values decoded from `cellValuesByFieldId`), or null on no-match.
+ */
+export async function getProspectByDomain(client: AirtableMcp, domain: string): Promise<ProspectRecord | null> {
+  const { fieldIds } = client.tables.Prospects;
+  const domainF = fieldId(client, 'Prospects', 'domain');
+  const { records } = await client.call<ListResult>('list_records_for_table', {
+    tableId: client.tables.Prospects.id,
+    fieldIds: Object.values(fieldIds),
+    filters: { operator: 'and', operands: [{ operator: '=', operands: [domainF, domain] }] },
+  });
+  if (records.length > 1) throw new Error(`Expected at most one Prospects row for domain "${domain}", found ${records.length}.`);
+  const [record] = records;
+  if (!record) return null;
+  const fields = Object.fromEntries(
+    Object.entries(fieldIds).map(([name, id]) => [name, record.cellValuesByFieldId[id]]),
+  );
+  return { ...fields, id: record.id };
+}
+
+/**
+ * Persist an outreach draft to the `Outreach` table, linked to `prospectId` (§11.3).
+ * `typecast: true` is load-bearing — without it the linked cell is silently nulled (§13.4).
+ */
+export async function createOutreach(
+  client: AirtableMcp,
+  prospectId: string,
+  outreach: { subjectLine: string; emailBody: string; angleReasoning: string },
+): Promise<string> {
+  const f = (name: string) => fieldId(client, 'Outreach', name);
+  const fields: Record<string, unknown> = {
+    [f('subjectLine')]: outreach.subjectLine,
+    [f('prospect')]: [prospectId],
+    [f('emailBody')]: outreach.emailBody,
+    [f('angleReasoning')]: outreach.angleReasoning,
+    [f('status')]: 'draft',
+    [f('createdAt')]: new Date().toISOString(),
+  };
+  const { records } = await client.call<{ records: { id: string }[] }>('create_records_for_table', {
+    tableId: client.tables.Outreach.id,
+    records: [{ fields }],
+    typecast: true,
+  });
+  return records[0].id;
+}
