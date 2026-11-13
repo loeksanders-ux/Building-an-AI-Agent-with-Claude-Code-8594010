@@ -4,9 +4,6 @@ import { researchCompany } from '../../src/agent/research.ts';
 // PRD §16.1 — Company research — researchCompany, (researchCompany seed) bullets only.
 // Seed stage returns plain text (result.text from generateText) per §12.3; later stages
 // widen/narrow the shape and must rewire these tests, not drop them.
-//
-// The missing-env test below has no §16.1 bullet yet — added at the user's request;
-// PRD drift to be resolved separately.
 
 const HAS_KEY = !!process.env.ANTHROPIC_API_KEY;
 
