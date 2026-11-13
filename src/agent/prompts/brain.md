@@ -39,9 +39,11 @@ Your job ends with the analysis. You do **not**:
 
 ## 4. Output format
 
-First, narrate briefly in plain text what you searched and what you found, as you go.
+Narrate briefly in plain text as you go — a line before each round of searches saying what you're looking for and why.
 
-Then finish with a structured analysis in markdown prose (not JSON), exactly in this shape:
+Your **final message** must stand on its own, because it is the only part of the run the rep reads. Open it with a short plain-text recap — two to four sentences, before any heading — naming the queries you ran and what each surfaced, including the ones that came back empty or as noise. Only then write the structured analysis. Do not start the final message with `## {Company}`.
+
+The structured analysis is markdown prose (not JSON), exactly in this shape:
 
 ```
 ## {Company}

@@ -30,7 +30,9 @@ export async function researchCompany(companyName: string): Promise<ResearchResu
     tools,
     stopWhen: stepCountIs(MAX_STEPS),
     // §5.2 streaming trace — shows what the Brain actually decided.
-    onStepFinish: ({ toolCalls, toolResults }) => {
+    onStepFinish: ({ text, toolCalls, toolResults }) => {
+      // Only intermediate narration — the final step's text is the returned analysis.
+      if (text.trim() && toolCalls.length) console.log(`[brain]  ${text.trim()}`);
       for (const call of toolCalls) console.log(`[tool]   ${call.toolName}(${JSON.stringify(call.input)})`);
       for (const r of toolResults) {
         const out = r.output as { url: string }[];
