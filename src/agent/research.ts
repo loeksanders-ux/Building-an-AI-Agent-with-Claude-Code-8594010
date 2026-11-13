@@ -7,7 +7,7 @@ import { searchWeb } from '../tools/tavily.ts';
 const tools = { searchWeb };
 
 // Upper bound on loop steps. ai@^5 ignores `maxSteps` (§4.2) — stopWhen is the knob.
-const MAX_STEPS = 10;
+const MAX_STEPS = 5;
 
 // (search wiring) shape per §12.3; narrows to { prospect, steps } at (structurer + persistence).
 export type ResearchResult = { text: string; steps: StepResult<typeof tools>[] };
