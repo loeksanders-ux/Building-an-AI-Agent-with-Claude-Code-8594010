@@ -308,6 +308,7 @@ Researching Stripe...
 - Company **name** (e.g. `Stripe`) is the canonical input.
 - The agent normalizes the input to a canonical key (lowercase, no whitespace) for memory lookup and as the Airtable primary field. Stripe and `stripe` and `STRIPE` all resolve to the same record.
 - Domains (e.g. `stripe.com`) are accepted; the agent strips the TLD for the canonical key.
+- `researchCompany(companyName, userMessage?)` takes the company name and, optionally, the user's full natural-language message as **separate** arguments. `companyName` is the name only (e.g. `FedEx`) — it is the sole input to the canonical key and is never parsed out of free text. `userMessage` (e.g. *"Research FedEx. For shipping companies, always lead with multilingual deflection across Cantonese and Bahasa."*) carries any stateful feedback for the Brain (§10.4) and has no effect on `domain`.
 
 ## 7. Prospect data model
 <!-- The structured shape every research output must match — Zod schema, field rules, and the honesty rule. -->
@@ -435,7 +436,7 @@ Each is wrapped with `tool()` from the Vercel AI SDK and added to `researchCompa
 
 ### 10.4 How memory shapes a run — the manual-save pattern
 
-The agent is invoked with the user's full natural-language message, not just a company name, so the Brain can recognize both research requests and stateful feedback in the same call. brain.md instructs:
+The agent is invoked with the company name plus, optionally, the user's full natural-language message (`researchCompany(companyName, userMessage?)` — see §6), so the Brain can recognize both research requests and stateful feedback in the same call. The message is passed to the Brain verbatim alongside the research instruction; it never feeds the canonical key. brain.md instructs:
 
 1. **Always start by calling `listPreferences()`.** Apply matching preferences during analysis. Cite which preferences applied in the narrated output (e.g. "Applying saved preference: for shipping companies, lead with multilingual.").
 2. **If the user's message contains a stateful preference** ("for shipping always lead with X", "always include Y", "prefer subject lines under 50 characters"), call `addPreference(text)` and acknowledge in the response: `Saved preference: <text>`.
@@ -523,6 +524,8 @@ The MCP-discovered Airtable tools (`upsertProspect`, etc.) are NOT exposed to th
 ### 12.3 Operations outside the loop (code-side, deterministic)
 
 These do **not** appear in the agent's `tools` map. They run in `researchCompany`'s code after `generateText` returns. There are no pre-loop code-side reads in this design — memory is read by the Brain via `listPreferences`; see §10.
+
+**`researchCompany`'s signature is `researchCompany(companyName: string, userMessage?: string)`.** `companyName` drives the research instruction, the structurer's `${companyName}`, and the canonical `domain` (§6, §7.4). `userMessage`, when given, is appended verbatim to the Brain's prompt so stateful feedback reaches `addPreference` (§10.4); it is not passed to the structurer and never touches `domain`.
 
 **`researchCompany`'s final return shape (after the `(structurer + persistence)` build) is `{ prospect: Prospect, steps: Step[] }`** — the typed prospect plus the agent loop's `steps` array (the Vercel AI SDK's per-step trace, with tool calls and results). Both are load-bearing for the test suite: the `prospect` field is what §16.1's `(structurer + persistence)` bullets validate against `ProspectSchema`; `steps` is what §16.1's `(search wiring)` bullet inspects to assert `searchWeb` was called (`steps.length > 1` plus tool-call inspection). Do not flatten this into just `Prospect` — the `(search wiring)` spec test cannot be written without `steps` in the return. Do not add other fields.
 
