@@ -1,4 +1,5 @@
 import { experimental_createMCPClient, type experimental_MCPClient as MCPClient } from '@ai-sdk/mcp';
+import type { Prospect } from '../agent/research.ts';
 
 // Airtable hosted MCP (PRD §4.2): Streamable HTTP, not SSE (SSE returns 405).
 const AIRTABLE_MCP_URL = 'https://mcp.airtable.com/mcp/';
@@ -18,19 +19,6 @@ type TableName = (typeof TABLES)[number];
 
 type TableInfo = { id: string; fieldIds: Record<string, string> };
 type McpTools = Awaited<ReturnType<MCPClient['tools']>>;
-
-// Mirrors PRD §7.1. Replace with `import type { Prospect } from '../agent/research.ts'`
-// once ProspectSchema lands in the (structurer + persistence) stage.
-export type Prospect = {
-  companyName: string;
-  domain: string;
-  overview: string;
-  signals: { name: string; description: string; strength: 'strong' | 'moderate' | 'weak' }[];
-  leadScore: number;
-  scoreReasoning: string;
-  suggestedAngle: string;
-  lastResearched: string;
-};
 
 export interface AirtableMcp {
   tools: MCPClient['tools'];
