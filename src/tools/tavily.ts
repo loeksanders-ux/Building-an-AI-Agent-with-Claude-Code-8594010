@@ -53,13 +53,16 @@ export const searchWeb = tool({
       );
     }
 
+    const cutoff = Date.now() - recencyDays * DAY_MS;
+
     const res = await fetch(TAVILY_SEARCH_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
       body: JSON.stringify({
         query,
         topic: 'news', // only news-topic searches reliably populate published_date
-        days: recencyDays,
+        // Tavily doesn't reliably apply `days` (PRD §16.1) — start_date does. No days/time_range.
+        start_date: new Date(cutoff).toISOString().slice(0, 10),
         max_results: MAX_RESULTS,
       }),
     });
@@ -73,7 +76,7 @@ export const searchWeb = tool({
     }
 
     const data = (await res.json()) as { results?: TavilyRawResult[] };
-    const cutoff = Date.now() - recencyDays * DAY_MS;
+    // Safety net: still drop anything Tavily returns from before the window.
 
     return (data.results ?? []).flatMap((r): SearchResult[] => {
       if (!r.url || !r.published_date) return [];

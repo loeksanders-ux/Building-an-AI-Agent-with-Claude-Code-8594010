@@ -83,6 +83,22 @@ describe.skipIf(!HAS_KEY)('Tavily — real API', () => {
     expectWithinWindow(results, recencyDays);
   });
 
+  it('sends start_date (today − recencyDays, YYYY-MM-DD) to Tavily and never days or time_range', async () => {
+    // Pass-through spy: the real request still goes to Tavily; we only read the body it sent.
+    const fetchSpy = vi.spyOn(globalThis, 'fetch');
+    try {
+      await search({ query: 'Stripe' });
+      const [, init] = fetchSpy.mock.calls.find(([url]) => String(url).includes('api.tavily.com'))!;
+      const body = JSON.parse(String(init!.body));
+      const expected = new Date(Date.now() - DEFAULT_RECENCY_DAYS * DAY_MS).toISOString().slice(0, 10);
+      expect(body.start_date).toBe(expected);
+      expect(body).not.toHaveProperty('days');
+      expect(body).not.toHaveProperty('time_range');
+    } finally {
+      fetchSpy.mockRestore();
+    }
+  });
+
   it('excludes results from blocklisted domains', async () => {
     // Stock-ticker news queries are where the finance-listicle domains surface most.
     const results = await search({ query: 'Nvidia stock analysis' });
