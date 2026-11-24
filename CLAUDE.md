@@ -34,6 +34,8 @@ Write the failing test first, implement to green, refactor. Tests hit real Tavil
 
 Before claiming a TDD cycle green, re-read the PRD sections that govern the files you touched (jump table above). Drift that survives `/tdd` is drift that survives forever.
 
+**When a test fails, fix the code, not the test.** The test that goes red → green *is* the spec for the change (PRD §16.3). If an assertion looks wrong, stop and surface it — fix it deliberately in its own change, never edit it just to turn `/tdd` green.
+
 ## TDD report style — terse by default
 
 When the result matches what TDD predicts, say so in one sentence and stop:
